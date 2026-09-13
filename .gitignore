@@ -3,3 +3,7 @@ __pycache__/
 *.pyc
 .env
 orca_cache
+venv/
+__pycache__/
+*.pyc
+orca_cache.db

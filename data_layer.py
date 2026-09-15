@@ -69,6 +69,25 @@ def _get_cached(source: str, key: str):
             return json.loads(payload)
     return None
 
+def _get_stale_cached(source: str, key: str):
+    """Return the latest cached data even if its TTL has expired."""
+    conn = sqlite3.connect(DB_PATH)
+    row = conn.execute(
+        "SELECT payload, fetched_at FROM cache WHERE source=? AND key=?",
+        (source, key),
+    ).fetchone()
+    conn.close()
+
+    if row:
+        payload, fetched_at = row
+        return {
+            "data": json.loads(payload),
+            "fetched_at": fetched_at,
+            "stale": time.time() - fetched_at >= CACHE_TTL_SECONDS,
+        }
+
+    return None
+
 
 def _set_cached(source: str, key: str, payload: dict):
     conn = sqlite3.connect(DB_PATH)
@@ -89,23 +108,35 @@ def get_imd_weather(location: str) -> dict:
     if cached:
         return cached
 
+    stale_cached = _get_stale_cached("imd", location)
+
     ids = LOCATION_ID_MAP.get(location.lower())
     if not ids:
-        data = {
+        if stale_cached:
+            return {
+                **stale_cached["data"],
+                "cache_status": "stale",
+                "cached_at": stale_cached["fetched_at"],
+            }
+
+        return {
             "error": "no_id_mapped",
+            "cache_status": "unavailable",
             "note": f"No IMD id configured for '{location}' yet. Add it to LOCATION_ID_MAP in data_layer.py.",
         }
-        _set_cached("imd", location, data)
-        return data
 
     result = {}
+    successful_requests = 0
+
     try:
         sea = requests.get(
             "https://api.imd.gov.in/api/v1/seabulletin",
             params={"id": ids.get("seabulletin_id")},
             timeout=10,
         )
+        sea.raise_for_status()
         result["sea_bulletin"] = sea.json()
+        successful_requests += 1
     except Exception as e:
         result["sea_bulletin_error"] = str(e)
 
@@ -114,7 +145,9 @@ def get_imd_weather(location: str) -> dict:
             "https://api.imd.gov.in/api/v1/coastalbulletin",
             timeout=10,
         )
+        coastal.raise_for_status()
         result["coastal_bulletin"] = coastal.json()
+        successful_requests += 1
     except Exception as e:
         result["coastal_bulletin_error"] = str(e)
 
@@ -124,12 +157,29 @@ def get_imd_weather(location: str) -> dict:
             params={"id": ids.get("port_id")},
             timeout=10,
         )
+        port.raise_for_status()
         result["port_warning"] = port.json()
+        successful_requests += 1
     except Exception as e:
         result["port_warning_error"] = str(e)
 
-    _set_cached("imd", location, result)
-    return result
+    if successful_requests > 0:
+        result["cache_status"] = "fresh"
+        _set_cached("imd", location, result)
+        return result
+
+    if stale_cached:
+        return {
+            **stale_cached["data"],
+            "cache_status": "stale",
+            "cached_at": stale_cached["fetched_at"],
+        }
+
+    return {
+        "error": "imd_unavailable",
+        "cache_status": "unavailable",
+        "note": "IMD data is unavailable and no cached data exists.",
+    }
 
 
 def get_incois_pfz(location: str) -> dict:

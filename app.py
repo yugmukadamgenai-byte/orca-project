@@ -3,7 +3,7 @@ from pydantic import BaseModel
 import sqlite3
 import json
 
-from gis_service import distance_and_bearing, geometry_intersection
+from gis_service import distance_and_bearing, geometry_intersection, point_in_eez
 from sar_drift import predict_drift
 from sar_search_zone import create_search_zone
 
@@ -66,6 +66,14 @@ def calculate_intersection(request: IntersectionRequest):
     return geometry_intersection(
         request.geometry_a,
         request.geometry_b,
+    )
+
+
+@app.post("/api/geospatial/eez")
+def check_eez(request: SARCreateRequest):
+    return point_in_eez(
+        request.latitude,
+        request.longitude,
     )
 
 

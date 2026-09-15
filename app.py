@@ -1,11 +1,19 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
+import sqlite3
+import json
+
 from gis_service import distance_and_bearing, geometry_intersection
 from sar_drift import predict_drift
-import sqlite3
+from sar_search_zone import create_search_zone
+
 
 app = FastAPI(title="ORCA GIS + SAR API")
 
+
+# ============================================================
+# Request Models
+# ============================================================
 
 class DistanceRequest(BaseModel):
     lat1: float
@@ -33,11 +41,23 @@ class SARDiftRequest(BaseModel):
     hours: float
 
 
+class SARLocationRequest(BaseModel):
+    incident_id: int
+    latitude: float
+    longitude: float
+
+
+# ============================================================
+# GIS Endpoints
+# ============================================================
+
 @app.post("/api/geospatial/distance")
 def calculate_distance(request: DistanceRequest):
     return distance_and_bearing(
-        request.lat1, request.lon1,
-        request.lat2, request.lon2,
+        request.lat1,
+        request.lon1,
+        request.lat2,
+        request.lon2,
     )
 
 
@@ -49,6 +69,36 @@ def calculate_intersection(request: IntersectionRequest):
     )
 
 
+@app.post("/api/route/analyze")
+def analyze_route(request: DistanceRequest):
+    result = distance_and_bearing(
+        request.lat1,
+        request.lon1,
+        request.lat2,
+        request.lon2,
+    )
+
+    return {
+        "route": {
+            "start": {
+                "latitude": request.lat1,
+                "longitude": request.lon1,
+            },
+            "end": {
+                "latitude": request.lat2,
+                "longitude": request.lon2,
+            },
+        },
+        "distance_km": result["distance_km"],
+        "bearing_degrees": result["bearing_degrees"],
+        "status": "route analyzed",
+    }
+
+
+# ============================================================
+# SAR Incident
+# ============================================================
+
 @app.post("/api/sar/create")
 def create_sar_incident(request: SARCreateRequest):
     conn = sqlite3.connect("orca_cache.db")
@@ -59,10 +109,15 @@ def create_sar_incident(request: SARCreateRequest):
         (status, last_known_latitude, last_known_longitude)
         VALUES (?, ?, ?)
         """,
-        ("active", request.latitude, request.longitude),
+        (
+            "active",
+            request.latitude,
+            request.longitude,
+        ),
     )
 
     incident_id = cursor.lastrowid
+
     conn.commit()
     conn.close()
 
@@ -73,6 +128,10 @@ def create_sar_incident(request: SARCreateRequest):
         "last_known_longitude": request.longitude,
     }
 
+
+# ============================================================
+# SAR Drift Prediction
+# ============================================================
 
 @app.post("/api/sar/predict-drift")
 def predict_sar_drift(request: SARDiftRequest):
@@ -89,7 +148,9 @@ def predict_sar_drift(request: SARDiftRequest):
 
     if incident is None:
         conn.close()
-        return {"error": "SAR incident not found"}
+        return {
+            "error": "SAR incident not found"
+        }
 
     latitude, longitude = incident
 
@@ -106,7 +167,12 @@ def predict_sar_drift(request: SARDiftRequest):
     conn.execute(
         """
         INSERT INTO sar_predictions
-        (incident_id, predicted_latitude, predicted_longitude, uncertainty_km)
+        (
+            incident_id,
+            predicted_latitude,
+            predicted_longitude,
+            uncertainty_km
+        )
         VALUES (?, ?, ?, ?)
         """,
         (
@@ -126,28 +192,28 @@ def predict_sar_drift(request: SARDiftRequest):
     }
 
 
-@app.get("/")
-def root():
-    return {"status": "ORCA GIS + SAR API is running"}
-# Add this class after SARCreateRequest in app.py
+# ============================================================
+# SAR Location History
+# ============================================================
 
-class SARLocationRequest(BaseModel):
-    incident_id: int
-    latitude: float
-    longitude: float
-# Add this endpoint before @app.get("/")
 @app.post("/api/sar/location")
 def add_sar_location(request: SARLocationRequest):
     conn = sqlite3.connect("orca_cache.db")
 
     incident = conn.execute(
-        "SELECT id FROM sar_incidents WHERE id = ?",
+        """
+        SELECT id
+        FROM sar_incidents
+        WHERE id = ?
+        """,
         (request.incident_id,),
     ).fetchone()
 
     if incident is None:
         conn.close()
-        return {"error": "SAR incident not found"}
+        return {
+            "error": "SAR incident not found"
+        }
 
     conn.execute(
         """
@@ -165,7 +231,9 @@ def add_sar_location(request: SARLocationRequest):
     conn.execute(
         """
         UPDATE sar_incidents
-        SET last_known_latitude = ?, last_known_longitude = ?
+        SET
+            last_known_latitude = ?,
+            last_known_longitude = ?
         WHERE id = ?
         """,
         (
@@ -184,11 +252,11 @@ def add_sar_location(request: SARLocationRequest):
         "longitude": request.longitude,
         "status": "location recorded",
     }
-from sar_search_zone import create_search_zone
 
-class SARSearchZoneRequest(BaseModel):
-    incident_id: int
 
+# ============================================================
+# SAR Search Zone Generation
+# ============================================================
 
 @app.post("/api/sar/{incident_id}/search-zones")
 def generate_search_zone(incident_id: int):
@@ -196,7 +264,10 @@ def generate_search_zone(incident_id: int):
 
     prediction = conn.execute(
         """
-        SELECT predicted_latitude, predicted_longitude, uncertainty_km
+        SELECT
+            predicted_latitude,
+            predicted_longitude,
+            uncertainty_km
         FROM sar_predictions
         WHERE incident_id = ?
         ORDER BY id DESC
@@ -207,7 +278,9 @@ def generate_search_zone(incident_id: int):
 
     if prediction is None:
         conn.close()
-        return {"error": "No SAR prediction found"}
+        return {
+            "error": "No SAR prediction found"
+        }
 
     latitude, longitude, uncertainty_km = prediction
 
@@ -216,8 +289,6 @@ def generate_search_zone(incident_id: int):
         longitude,
         uncertainty_km,
     )
-
-    import json
 
     conn.execute(
         """
@@ -241,14 +312,22 @@ def generate_search_zone(incident_id: int):
     }
 
 
+# ============================================================
+# Get SAR Incident
+# ============================================================
+
 @app.get("/api/sar/{incident_id}")
 def get_sar_incident(incident_id: int):
     conn = sqlite3.connect("orca_cache.db")
 
     incident = conn.execute(
         """
-        SELECT id, status, last_known_latitude,
-               last_known_longitude, created_at
+        SELECT
+            id,
+            status,
+            last_known_latitude,
+            last_known_longitude,
+            created_at
         FROM sar_incidents
         WHERE id = ?
         """,
@@ -258,7 +337,9 @@ def get_sar_incident(incident_id: int):
     conn.close()
 
     if incident is None:
-        return {"error": "SAR incident not found"}
+        return {
+            "error": "SAR incident not found"
+        }
 
     return {
         "incident_id": incident[0],
@@ -269,13 +350,21 @@ def get_sar_incident(incident_id: int):
     }
 
 
+# ============================================================
+# Get SAR Search Zones
+# ============================================================
+
 @app.get("/api/sar/{incident_id}/search-zones")
 def get_search_zones(incident_id: int):
     conn = sqlite3.connect("orca_cache.db")
 
     zones = conn.execute(
         """
-        SELECT id, geometry, probability, created_at
+        SELECT
+            id,
+            geometry,
+            probability,
+            created_at
         FROM sar_search_zones
         WHERE incident_id = ?
         ORDER BY id DESC
@@ -291,7 +380,7 @@ def get_search_zones(incident_id: int):
         "search_zones": [
             {
                 "zone_id": zone[0],
-                "geometry": __import__("json").loads(zone[1]),
+                "geometry": json.loads(zone[1]),
                 "probability": zone[2],
                 "created_at": zone[3],
             }
@@ -300,13 +389,22 @@ def get_search_zones(incident_id: int):
     }
 
 
+# ============================================================
+# Get SAR Evidence
+# ============================================================
+
 @app.get("/api/sar/{incident_id}/evidence")
 def get_sar_evidence(incident_id: int):
     conn = sqlite3.connect("orca_cache.db")
 
     evidence = conn.execute(
         """
-        SELECT id, evidence_type, description, source, created_at
+        SELECT
+            id,
+            evidence_type,
+            description,
+            source,
+            created_at
         FROM sar_evidence
         WHERE incident_id = ?
         ORDER BY id DESC
@@ -329,4 +427,15 @@ def get_sar_evidence(incident_id: int):
             }
             for item in evidence
         ],
+    }
+
+
+# ============================================================
+# Root
+# ============================================================
+
+@app.get("/")
+def root():
+    return {
+        "status": "ORCA GIS + SAR API is running"
     }

@@ -233,26 +233,24 @@ def get_incois_pfz(location: str) -> dict:
 
 
 def get_mosdac_eo(location: str) -> dict:
-    """MOSDAC (ISRO) ocean/earth-observation products.
-    MOSDAC is mostly per-product download links rather than a query API,
-    and some products need a free account login. For a lightweight
-    assistant, INCOIS's PFZ bulletin (above) is the more practical source -
-    treat this as optional/future work."""
+    """MOSDAC (ISRO) ocean/earth-observation products."""
     cached = _get_cached("mosdac", location)
     if cached:
         return cached
+
+    stale_cached = _get_stale_cached("mosdac", location)
 
     data = {
         "note": (
             "MOSDAC does not offer a simple query API. Free products are "
             "listed at https://www.mosdac.gov.in/open-data with per-product "
-            "download links; some require a free MOSDAC account. Consider "
-            "skipping this source initially and relying on IMD + INCOIS."
-        )
+            "download links; some require a free MOSDAC account."
+        ),
+        "cache_status": "fresh",
     }
+
     _set_cached("mosdac", location, data)
     return data
-
 
 def get_gis_boundaries(location: str) -> dict:
     """Fetch GIS boundary/geofencing data for a location."""

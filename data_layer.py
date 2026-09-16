@@ -183,31 +183,53 @@ def get_imd_weather(location: str) -> dict:
 
 
 def get_incois_pfz(location: str) -> dict:
-    """Scrape INCOIS's Potential Fishing Zone text bulletin.
-    This is a starting-point scraper - inspect the actual page HTML for
-    your region and adjust the parsing (BeautifulSoup selectors) to match."""
+    """Scrape INCOIS's Potential Fishing Zone text bulletin."""
     cached = _get_cached("incois", location)
     if cached:
         return cached
 
+    stale_cached = _get_stale_cached("incois", location)
+
     try:
-        from bs4 import BeautifulSoup  # pip install beautifulsoup4
+        from bs4 import BeautifulSoup
 
         resp = requests.get(
             "https://incois.gov.in/MarineFisheries/TextDataHome",
             params={"mfid": 1, "request_locale": "en"},
             timeout=10,
         )
-        soup = BeautifulSoup(resp.text, "html.parser")
-        # PLACEHOLDER PARSING - inspect the real page structure and replace
-        # this with the actual selector for the advisory text/table you need.
-        text_content = soup.get_text(separator=" ", strip=True)
-        data = {"raw_text_snippet": text_content[:2000], "note": "Adjust the BeautifulSoup selector to target the specific advisory table/text for your region."}
-    except Exception as e:
-        data = {"error": str(e), "note": "INCOIS scrape failed - check that beautifulsoup4 is installed and the page structure hasn't changed."}
+        resp.raise_for_status()
 
-    _set_cached("incois", location, data)
-    return data
+        soup = BeautifulSoup(resp.text, "html.parser")
+        text_content = soup.get_text(separator=" ", strip=True)
+
+        data = {
+            "raw_text_snippet": text_content[:2000],
+            "note": (
+                "Adjust the BeautifulSoup selector to target the "
+                "specific advisory table/text for your region."
+            ),
+            "cache_status": "fresh",
+        }
+
+        _set_cached("incois", location, data)
+        return data
+
+    except Exception as e:
+        if stale_cached:
+            return {
+                **stale_cached["data"],
+                "cache_status": "stale",
+                "cached_at": stale_cached["fetched_at"],
+                "source_error": str(e),
+            }
+
+        return {
+            "error": "incois_unavailable",
+            "cache_status": "unavailable",
+            "note": "INCOIS data is unavailable and no cached data exists.",
+            "source_error": str(e),
+        }
 
 
 def get_mosdac_eo(location: str) -> dict:

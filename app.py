@@ -3,7 +3,13 @@ from pydantic import BaseModel
 import sqlite3
 import json
 
-from gis_service import distance_and_bearing, geometry_intersection, point_in_eez
+from gis_service import (
+    distance_and_bearing,
+    geometry_intersection,
+    point_in_eez,
+    hazard_zone_intersection,
+    point_in_geofence,
+)
 from sar_drift import predict_drift
 from sar_search_zone import create_search_zone
 from pfz_service import create_pfz_zone
@@ -26,6 +32,17 @@ class DistanceRequest(BaseModel):
 class IntersectionRequest(BaseModel):
     geometry_a: dict
     geometry_b: dict
+
+
+class HazardZoneRequest(BaseModel):
+    hazard_geometry: dict
+    restricted_geometry: dict
+
+
+class GeofenceRequest(BaseModel):
+    latitude: float
+    longitude: float
+    geofence_geometry: dict
 
 
 class SARCreateRequest(BaseModel):
@@ -73,6 +90,23 @@ def calculate_intersection(request: IntersectionRequest):
     return geometry_intersection(
         request.geometry_a,
         request.geometry_b,
+    )
+
+
+@app.post("/api/geospatial/hazard-intersection")
+def calculate_hazard_intersection(request: HazardZoneRequest):
+    return hazard_zone_intersection(
+        request.hazard_geometry,
+        request.restricted_geometry,
+    )
+
+
+@app.post("/api/geospatial/geofence")
+def check_geofence(request: GeofenceRequest):
+    return point_in_geofence(
+        request.latitude,
+        request.longitude,
+        request.geofence_geometry,
     )
 
 

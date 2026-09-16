@@ -33,7 +33,9 @@ def distance_and_bearing(lat1, lon1, lat2, lon2):
 
     x = (
         math.cos(phi1) * math.sin(phi2)
-        - math.sin(phi1) * math.cos(phi2) * math.cos(delta_lambda)
+        - math.sin(phi1)
+        * math.cos(phi2)
+        * math.cos(delta_lambda)
     )
 
     bearing = (math.degrees(math.atan2(y, x)) + 360) % 360
@@ -65,4 +67,30 @@ def geometry_intersection(geojson_a, geojson_b):
 
     return {
         "intersects": bool(geometry_a.intersects(geometry_b))
+    }
+
+
+def hazard_zone_intersection(hazard_geometry, restricted_geometry):
+    """Check whether a hazard zone intersects a restricted zone."""
+
+    hazard = shape(hazard_geometry)
+    restricted = shape(restricted_geometry)
+
+    return {
+        "hazard_intersects_restricted": bool(
+            hazard.intersects(restricted)
+        )
+    }
+
+
+def point_in_geofence(latitude, longitude, geofence_geometry):
+    """Check whether a coordinate is inside a supplied geofence."""
+
+    geofence = shape(geofence_geometry)
+    point = Point(longitude, latitude)
+
+    return {
+        "latitude": latitude,
+        "longitude": longitude,
+        "inside_geofence": bool(geofence.contains(point)),
     }

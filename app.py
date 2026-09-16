@@ -9,6 +9,7 @@ from gis_service import (
     point_in_eez,
     hazard_zone_intersection,
     point_in_geofence,
+    create_route_geometry,
 )
 from sar_drift import predict_drift
 from sar_search_zone import create_search_zone
@@ -127,9 +128,20 @@ def create_pfz(request: PFZRequest):
     )
 
 
+# ============================================================
+# Route Analysis
+# ============================================================
+
 @app.post("/api/route/analyze")
 def analyze_route(request: DistanceRequest):
     result = distance_and_bearing(
+        request.lat1,
+        request.lon1,
+        request.lat2,
+        request.lon2,
+    )
+
+    route_geometry = create_route_geometry(
         request.lat1,
         request.lon1,
         request.lat2,
@@ -147,6 +159,7 @@ def analyze_route(request: DistanceRequest):
                 "longitude": request.lon2,
             },
         },
+        "route_geometry": route_geometry,
         "distance_km": result["distance_km"],
         "bearing_degrees": result["bearing_degrees"],
         "status": "route analyzed",

@@ -94,3 +94,15 @@ def point_in_geofence(latitude, longitude, geofence_geometry):
         "longitude": longitude,
         "inside_geofence": bool(geofence.contains(point)),
     }
+
+
+def create_route_geometry(lat1, lon1, lat2, lon2):
+    """Create deterministic straight-line GeoJSON route geometry."""
+
+    return {
+        "type": "LineString",
+        "coordinates": [
+            [lon1, lat1],
+            [lon2, lat2],
+        ],
+    }

@@ -258,11 +258,15 @@ def get_gis_boundaries(location: str) -> dict:
     if cached:
         return cached
 
-    # For real geofencing, load a local shapefile/GeoJSON with geopandas
-    # instead of hitting a remote endpoint - maritime boundary data is
-    # typically static. India's EEZ/maritime boundary shapefiles are
-    # available from public GIS data portals (e.g. Bhuvan, marineregions.org).
-    data = {"note": "Load boundary polygons locally via geopandas.read_file('boundaries.geojson')"}
+    stale_cached = _get_stale_cached("gis", location)
+
+    data = {
+        "note": (
+            "Load boundary polygons locally via "
+            "geopandas.read_file('boundaries.geojson')"
+        ),
+        "cache_status": "fresh",
+    }
 
     _set_cached("gis", location, data)
     return data

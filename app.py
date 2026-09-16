@@ -6,6 +6,7 @@ import json
 from gis_service import distance_and_bearing, geometry_intersection, point_in_eez
 from sar_drift import predict_drift
 from sar_search_zone import create_search_zone
+from pfz_service import create_pfz_zone
 
 
 app = FastAPI(title="ORCA GIS + SAR API")
@@ -30,6 +31,12 @@ class IntersectionRequest(BaseModel):
 class SARCreateRequest(BaseModel):
     latitude: float
     longitude: float
+
+
+class PFZRequest(BaseModel):
+    latitude: float
+    longitude: float
+    radius_km: float = 5.0
 
 
 class SARDiftRequest(BaseModel):
@@ -74,6 +81,15 @@ def check_eez(request: SARCreateRequest):
     return point_in_eez(
         request.latitude,
         request.longitude,
+    )
+
+
+@app.post("/api/geospatial/pfz")
+def create_pfz(request: PFZRequest):
+    return create_pfz_zone(
+        request.latitude,
+        request.longitude,
+        request.radius_km,
     )
 
 

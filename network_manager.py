@@ -67,10 +67,11 @@ class NetworkManager:
         self.on_status_change = on_status_change
 
     def check(self) -> bool:
-        """Check current connectivity and report state changes."""
+        """Check connectivity and notify when the network state changes."""
+        previous_status = self.online
         current_status = is_online()
 
-        if current_status != self.online:
+        if current_status != previous_status:
             self.online = current_status
 
             if self.on_status_change:

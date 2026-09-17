@@ -324,3 +324,40 @@ def mark_sos_event_synced(event_id: int):
 
     conn.commit()
     conn.close()
+
+def sync_sos_events(sync_url: str, timeout: int = 10) -> dict:
+    """Try to send all queued SOS events to the backend."""
+    pending_events = get_unsynced_sos_events()
+
+    if not pending_events:
+        return {
+            "success": True,
+            "synced": 0,
+            "remaining": 0,
+        }
+
+    synced_count = 0
+
+    for event in pending_events:
+        try:
+            response = requests.post(
+                sync_url,
+                json=event["payload"],
+                timeout=timeout,
+            )
+            response.raise_for_status()
+
+            mark_sos_event_synced(event["id"])
+            synced_count += 1
+
+        except requests.RequestException:
+            # Keep the event in the queue so it can be retried later.
+            break
+
+    remaining = len(get_unsynced_sos_events())
+
+    return {
+        "success": remaining == 0,
+        "synced": synced_count,
+        "remaining": remaining,
+    }

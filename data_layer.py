@@ -52,6 +52,14 @@ def _init_db():
             PRIMARY KEY (source, key)
         )
     """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS sos_queue (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            payload TEXT NOT NULL,
+            created_at REAL NOT NULL,
+            synced INTEGER DEFAULT 0
+        )
+    """)
     conn.commit()
     conn.close()
 
@@ -270,3 +278,49 @@ def get_gis_boundaries(location: str) -> dict:
 
     _set_cached("gis", location, data)
     return data
+
+def queue_sos_event(payload: dict) -> int:
+    """Store an SOS event locally until it can be synced."""
+    conn = sqlite3.connect(DB_PATH)
+
+    cursor = conn.execute(
+        "INSERT INTO sos_queue (payload, created_at, synced) VALUES (?, ?, 0)",
+        (json.dumps(payload), time.time()),
+    )
+
+    conn.commit()
+    event_id = cursor.lastrowid
+    conn.close()
+
+    return event_id
+
+def get_unsynced_sos_events() -> list:
+    """Return all SOS events waiting to be synced."""
+    conn = sqlite3.connect(DB_PATH)
+
+    rows = conn.execute(
+        "SELECT id, payload, created_at FROM sos_queue WHERE synced=0 ORDER BY id"
+    ).fetchall()
+
+    conn.close()
+
+    return [
+        {
+            "id": row[0],
+            "payload": json.loads(row[1]),
+            "created_at": row[2],
+        }
+        for row in rows
+    ]
+
+def mark_sos_event_synced(event_id: int):
+    """Mark an SOS event as successfully synchronized."""
+    conn = sqlite3.connect(DB_PATH)
+
+    conn.execute(
+        "UPDATE sos_queue SET synced=1 WHERE id=?",
+        (event_id,),
+    )
+
+    conn.commit()
+    conn.close()

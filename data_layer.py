@@ -27,6 +27,7 @@ import sqlite3
 import json
 import time
 import requests
+from network_manager import request_with_retry
 
 DB_PATH = "orca_cache.db"
 CACHE_TTL_SECONDS = 60 * 30  # 30 minutes - tune as needed
@@ -137,35 +138,38 @@ def get_imd_weather(location: str) -> dict:
     successful_requests = 0
 
     try:
-        sea = requests.get(
+        sea = request_with_retry(
+            "GET",
             "https://api.imd.gov.in/api/v1/seabulletin",
             params={"id": ids.get("seabulletin_id")},
             timeout=10,
         )
-        sea.raise_for_status()
+        
         result["sea_bulletin"] = sea.json()
         successful_requests += 1
     except Exception as e:
         result["sea_bulletin_error"] = str(e)
 
     try:
-        coastal = requests.get(
+        coastal = request_with_retry(
+            "GET",
             "https://api.imd.gov.in/api/v1/coastalbulletin",
             timeout=10,
         )
-        coastal.raise_for_status()
+        
         result["coastal_bulletin"] = coastal.json()
         successful_requests += 1
     except Exception as e:
         result["coastal_bulletin_error"] = str(e)
 
     try:
-        port = requests.get(
+        port = request_with_retry(
+            "GET",
             "https://api.imd.gov.in/api/v1/portwarning",
             params={"id": ids.get("port_id")},
             timeout=10,
         )
-        port.raise_for_status()
+        
         result["port_warning"] = port.json()
         successful_requests += 1
     except Exception as e:
@@ -201,12 +205,13 @@ def get_incois_pfz(location: str) -> dict:
     try:
         from bs4 import BeautifulSoup
 
-        resp = requests.get(
+        resp = request_with_retry(
+            "GET",
             "https://incois.gov.in/MarineFisheries/TextDataHome",
             params={"mfid": 1, "request_locale": "en"},
             timeout=10,
         )
-        resp.raise_for_status()
+        
 
         soup = BeautifulSoup(resp.text, "html.parser")
         text_content = soup.get_text(separator=" ", strip=True)

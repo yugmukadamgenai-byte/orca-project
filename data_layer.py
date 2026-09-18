@@ -27,6 +27,7 @@ import sqlite3
 import json
 import time
 import requests
+from network_manager import request_with_retry
 
 DB_PATH = "orca_cache.db"
 CACHE_TTL_SECONDS = 60 * 30  # 30 minutes - tune as needed
@@ -52,6 +53,14 @@ def _init_db():
             PRIMARY KEY (source, key)
         )
     """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS sos_queue (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            payload TEXT NOT NULL,
+            created_at REAL NOT NULL,
+            synced INTEGER DEFAULT 0
+        )
+    """)
     conn.commit()
     conn.close()
 
@@ -67,6 +76,25 @@ def _get_cached(source: str, key: str):
         payload, fetched_at = row
         if time.time() - fetched_at < CACHE_TTL_SECONDS:
             return json.loads(payload)
+    return None
+
+def _get_stale_cached(source: str, key: str):
+    """Return the latest cached data even if its TTL has expired."""
+    conn = sqlite3.connect(DB_PATH)
+    row = conn.execute(
+        "SELECT payload, fetched_at FROM cache WHERE source=? AND key=?",
+        (source, key),
+    ).fetchone()
+    conn.close()
+
+    if row:
+        payload, fetched_at = row
+        return {
+            "data": json.loads(payload),
+            "fetched_at": fetched_at,
+            "stale": time.time() - fetched_at >= CACHE_TTL_SECONDS,
+        }
+
     return None
 
 
@@ -89,98 +117,153 @@ def get_imd_weather(location: str) -> dict:
     if cached:
         return cached
 
+    stale_cached = _get_stale_cached("imd", location)
+
     ids = LOCATION_ID_MAP.get(location.lower())
     if not ids:
-        data = {
+        if stale_cached:
+            return {
+                **stale_cached["data"],
+                "cache_status": "stale",
+                "cached_at": stale_cached["fetched_at"],
+            }
+
+        return {
             "error": "no_id_mapped",
+            "cache_status": "unavailable",
             "note": f"No IMD id configured for '{location}' yet. Add it to LOCATION_ID_MAP in data_layer.py.",
         }
-        _set_cached("imd", location, data)
-        return data
 
     result = {}
+    successful_requests = 0
+
     try:
-        sea = requests.get(
+        sea = request_with_retry(
+            "GET",
             "https://api.imd.gov.in/api/v1/seabulletin",
             params={"id": ids.get("seabulletin_id")},
             timeout=10,
         )
+        
         result["sea_bulletin"] = sea.json()
+        successful_requests += 1
     except Exception as e:
         result["sea_bulletin_error"] = str(e)
 
     try:
-        coastal = requests.get(
+        coastal = request_with_retry(
+            "GET",
             "https://api.imd.gov.in/api/v1/coastalbulletin",
             timeout=10,
         )
+        
         result["coastal_bulletin"] = coastal.json()
+        successful_requests += 1
     except Exception as e:
         result["coastal_bulletin_error"] = str(e)
 
     try:
-        port = requests.get(
+        port = request_with_retry(
+            "GET",
             "https://api.imd.gov.in/api/v1/portwarning",
             params={"id": ids.get("port_id")},
             timeout=10,
         )
+        
         result["port_warning"] = port.json()
+        successful_requests += 1
     except Exception as e:
         result["port_warning_error"] = str(e)
 
-    _set_cached("imd", location, result)
-    return result
+    if successful_requests > 0:
+        result["cache_status"] = "fresh"
+        _set_cached("imd", location, result)
+        return result
+
+    if stale_cached:
+        return {
+            **stale_cached["data"],
+            "cache_status": "stale",
+            "cached_at": stale_cached["fetched_at"],
+        }
+
+    return {
+        "error": "imd_unavailable",
+        "cache_status": "unavailable",
+        "note": "IMD data is unavailable and no cached data exists.",
+    }
 
 
 def get_incois_pfz(location: str) -> dict:
-    """Scrape INCOIS's Potential Fishing Zone text bulletin.
-    This is a starting-point scraper - inspect the actual page HTML for
-    your region and adjust the parsing (BeautifulSoup selectors) to match."""
+    """Scrape INCOIS's Potential Fishing Zone text bulletin."""
     cached = _get_cached("incois", location)
     if cached:
         return cached
 
-    try:
-        from bs4 import BeautifulSoup  # pip install beautifulsoup4
+    stale_cached = _get_stale_cached("incois", location)
 
-        resp = requests.get(
+    try:
+        from bs4 import BeautifulSoup
+
+        resp = request_with_retry(
+            "GET",
             "https://incois.gov.in/MarineFisheries/TextDataHome",
             params={"mfid": 1, "request_locale": "en"},
             timeout=10,
         )
-        soup = BeautifulSoup(resp.text, "html.parser")
-        # PLACEHOLDER PARSING - inspect the real page structure and replace
-        # this with the actual selector for the advisory text/table you need.
-        text_content = soup.get_text(separator=" ", strip=True)
-        data = {"raw_text_snippet": text_content[:2000], "note": "Adjust the BeautifulSoup selector to target the specific advisory table/text for your region."}
-    except Exception as e:
-        data = {"error": str(e), "note": "INCOIS scrape failed - check that beautifulsoup4 is installed and the page structure hasn't changed."}
+        
 
-    _set_cached("incois", location, data)
-    return data
+        soup = BeautifulSoup(resp.text, "html.parser")
+        text_content = soup.get_text(separator=" ", strip=True)
+
+        data = {
+            "raw_text_snippet": text_content[:2000],
+            "note": (
+                "Adjust the BeautifulSoup selector to target the "
+                "specific advisory table/text for your region."
+            ),
+            "cache_status": "fresh",
+        }
+
+        _set_cached("incois", location, data)
+        return data
+
+    except Exception as e:
+        if stale_cached:
+            return {
+                **stale_cached["data"],
+                "cache_status": "stale",
+                "cached_at": stale_cached["fetched_at"],
+                "source_error": str(e),
+            }
+
+        return {
+            "error": "incois_unavailable",
+            "cache_status": "unavailable",
+            "note": "INCOIS data is unavailable and no cached data exists.",
+            "source_error": str(e),
+        }
 
 
 def get_mosdac_eo(location: str) -> dict:
-    """MOSDAC (ISRO) ocean/earth-observation products.
-    MOSDAC is mostly per-product download links rather than a query API,
-    and some products need a free account login. For a lightweight
-    assistant, INCOIS's PFZ bulletin (above) is the more practical source -
-    treat this as optional/future work."""
+    """MOSDAC (ISRO) ocean/earth-observation products."""
     cached = _get_cached("mosdac", location)
     if cached:
         return cached
+
+    stale_cached = _get_stale_cached("mosdac", location)
 
     data = {
         "note": (
             "MOSDAC does not offer a simple query API. Free products are "
             "listed at https://www.mosdac.gov.in/open-data with per-product "
-            "download links; some require a free MOSDAC account. Consider "
-            "skipping this source initially and relying on IMD + INCOIS."
-        )
+            "download links; some require a free MOSDAC account."
+        ),
+        "cache_status": "fresh",
     }
+
     _set_cached("mosdac", location, data)
     return data
-
 
 def get_gis_boundaries(location: str) -> dict:
     """Fetch GIS boundary/geofencing data for a location."""
@@ -188,11 +271,98 @@ def get_gis_boundaries(location: str) -> dict:
     if cached:
         return cached
 
-    # For real geofencing, load a local shapefile/GeoJSON with geopandas
-    # instead of hitting a remote endpoint - maritime boundary data is
-    # typically static. India's EEZ/maritime boundary shapefiles are
-    # available from public GIS data portals (e.g. Bhuvan, marineregions.org).
-    data = {"note": "Load boundary polygons locally via geopandas.read_file('boundaries.geojson')"}
+    stale_cached = _get_stale_cached("gis", location)
+
+    data = {
+        "note": (
+            "Load boundary polygons locally via "
+            "geopandas.read_file('boundaries.geojson')"
+        ),
+        "cache_status": "fresh",
+    }
 
     _set_cached("gis", location, data)
     return data
+
+def queue_sos_event(payload: dict) -> int:
+    """Store an SOS event locally until it can be synced."""
+    conn = sqlite3.connect(DB_PATH)
+
+    cursor = conn.execute(
+        "INSERT INTO sos_queue (payload, created_at, synced) VALUES (?, ?, 0)",
+        (json.dumps(payload), time.time()),
+    )
+
+    conn.commit()
+    event_id = cursor.lastrowid
+    conn.close()
+
+    return event_id
+
+def get_unsynced_sos_events() -> list:
+    """Return all SOS events waiting to be synced."""
+    conn = sqlite3.connect(DB_PATH)
+
+    rows = conn.execute(
+        "SELECT id, payload, created_at FROM sos_queue WHERE synced=0 ORDER BY id"
+    ).fetchall()
+
+    conn.close()
+
+    return [
+        {
+            "id": row[0],
+            "payload": json.loads(row[1]),
+            "created_at": row[2],
+        }
+        for row in rows
+    ]
+
+def mark_sos_event_synced(event_id: int):
+    """Mark an SOS event as successfully synchronized."""
+    conn = sqlite3.connect(DB_PATH)
+
+    conn.execute(
+        "UPDATE sos_queue SET synced=1 WHERE id=?",
+        (event_id,),
+    )
+
+    conn.commit()
+    conn.close()
+
+def sync_sos_events(sync_url: str, timeout: int = 10) -> dict:
+    """Try to send all queued SOS events to the backend."""
+    pending_events = get_unsynced_sos_events()
+
+    if not pending_events:
+        return {
+            "success": True,
+            "synced": 0,
+            "remaining": 0,
+        }
+
+    synced_count = 0
+
+    for event in pending_events:
+        try:
+            response = requests.post(
+                sync_url,
+                json=event["payload"],
+                timeout=timeout,
+            )
+            response.raise_for_status()
+
+            mark_sos_event_synced(event["id"])
+            synced_count += 1
+
+        except requests.RequestException:
+            # Keep the event in the queue so it can be retried later.
+            break
+
+    remaining = len(get_unsynced_sos_events())
+
+    return {
+        "success": remaining == 0,
+        "synced": synced_count,
+        "remaining": remaining,
+    }

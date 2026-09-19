@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+
+<title>ORCA SAR Mission Brief - Incident 3</title>
+
+<style>
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 28px;
+    background: #f1f3f6;
+    color: #152033;
+    font-family:
+        Arial,
+        Helvetica,
+        sans-serif;
+}
+
+.container {
+    max-width: 1420px;
+    margin: 0 auto;
+}
+
+.header {
+    background: #101827;
+    color: white;
+    border-radius: 14px;
+    padding: 32px;
+    margin-bottom: 24px;
+}
+
+.header h1 {
+    margin: 0 0 8px 0;
+    font-size: 34px;
+}
+
+.header p {
+    margin: 0;
+    color: #d5d9e0;
+    font-size: 18px;
+}
+
+.status {
+    display: inline-block;
+    margin-top: 18px;
+    padding: 8px 15px;
+    border-radius: 18px;
+    background: #16803c;
+    color: white;
+    font-weight: bold;
+}
+
+.card {
+    background: white;
+    border-radius: 14px;
+    padding: 26px;
+    margin-bottom: 24px;
+    box-shadow: 0 3px 12px rgba(0,0,0,0.08);
+}
+
+.card h2 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    font-size: 25px;
+}
+
+.incident-grid,
+.rescue-grid,
+.route-summary {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 14px;
+}
+
+.rescue-grid {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.route-summary {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.metric {
+    border: 1px solid #d8dde5;
+    border-radius: 10px;
+    padding: 15px;
+    background: #fbfcfd;
+}
+
+.label {
+    color: #63748a;
+    font-size: 12px;
+    font-weight: bold;
+    margin-bottom: 7px;
+}
+
+.value {
+    font-size: 17px;
+    font-weight: bold;
+    word-break: break-word;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th {
+    text-align: left;
+    padding: 12px 10px;
+    background: #e5e8ed;
+    font-size: 14px;
+}
+
+td {
+    padding: 12px 10px;
+    border-bottom: 1px solid #e0e3e8;
+    vertical-align: top;
+}
+
+.probability {
+    font-weight: bold;
+}
+
+.priority {
+    display: inline-block;
+    padding: 4px 11px;
+    border-radius: 14px;
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.priority-low {
+    background: #16803c;
+}
+
+.priority-medium {
+    background: #b77900;
+}
+
+.priority-high {
+    background: #bd2525;
+}
+
+.info {
+    margin-top: 16px;
+    padding: 14px;
+    background: #f1f3f6;
+    border-radius: 8px;
+    line-height: 1.5;
+}
+
+.route-coordinates {
+    margin-top: 18px;
+    padding: 16px;
+    background: #f7f8fa;
+    border-radius: 8px;
+    line-height: 1.7;
+    word-break: break-word;
+}
+
+.hazard-warning {
+    padding: 15px;
+    border-left: 5px solid #bd2525;
+    background: #fff0f0;
+    color: #8b1717;
+    border-radius: 7px;
+}
+
+.hazard-clear {
+    padding: 15px;
+    border-left: 5px solid #16803c;
+    background: #edf9f1;
+    color: #12662f;
+    border-radius: 7px;
+}
+
+.hazard-message {
+    margin-top: 12px;
+    color: #4e5b6c;
+}
+
+.warning {
+    border-left: 5px solid #e07b00;
+    background: #fff7ed;
+    padding: 16px;
+    border-radius: 7px;
+    line-height: 1.5;
+}
+
+.footer {
+    text-align: center;
+    color: #68788d;
+    padding: 10px;
+    font-size: 13px;
+}
+
+@media print {
+
+    body {
+        background: white;
+        padding: 0;
+    }
+
+    .card {
+        box-shadow: none;
+        border: 1px solid #ddd;
+        break-inside: avoid;
+    }
+
+    .header {
+        break-inside: avoid;
+    }
+
+}
+
+@media (max-width: 900px) {
+
+    .incident-grid,
+    .rescue-grid,
+    .route-summary {
+        grid-template-columns: 1fr 1fr;
+    }
+
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <div class="header">
+
+        <h1>ORCA SAR MISSION BRIEF</h1>
+
+        <p>
+            Search and Rescue Operational Package
+        </p>
+
+        <div class="status">
+            SAR mission package generated
+        </div>
+
+    </div>
+
+    
+    <section class="card">
+        <h2>1. Incident</h2>
+
+        <div class="incident-grid">
+
+            <div class="metric">
+                <div class="label">INCIDENT ID</div>
+                <div class="value">3</div>
+            </div>
+
+            <div class="metric">
+                <div class="label">STATUS</div>
+                <div class="value">active</div>
+            </div>
+
+            <div class="metric">
+                <div class="label">LAST KNOWN LATITUDE</div>
+                <div class="value">19.080000</div>
+            </div>
+
+            <div class="metric">
+                <div class="label">LAST KNOWN LONGITUDE</div>
+                <div class="value">72.885000</div>
+            </div>
+
+            <div class="metric">
+                <div class="label">CREATED</div>
+                <div class="value">2026-09-16 17:47:45</div>
+            </div>
+
+        </div>
+    </section>
+    
+
+    
+    <section class="card">
+        <h2>2. Prioritized SAR Search Zones</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Zone ID</th>
+                    <th>Probability</th>
+                    <th>Risk Score</th>
+                    <th>Priority</th>
+                    <th>Recommended Action</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                
+            <tr>
+                <td>1</td>
+                <td>10</td>
+                <td class="probability">
+                    28.8%
+                </td>
+                <td>0.1325</td>
+                <td>
+                    <span class="priority priority-low">
+                        LOW
+                    </span>
+                </td>
+                <td>Continue monitoring conditions</td>
+            </tr>
+            
+            <tr>
+                <td>2</td>
+                <td>8</td>
+                <td class="probability">
+                    28.6%
+                </td>
+                <td>0.1316</td>
+                <td>
+                    <span class="priority priority-low">
+                        LOW
+                    </span>
+                </td>
+                <td>Continue monitoring conditions</td>
+            </tr>
+            
+            <tr>
+                <td>3</td>
+                <td>11</td>
+                <td class="probability">
+                    21.8%
+                </td>
+                <td>0.1003</td>
+                <td>
+                    <span class="priority priority-low">
+                        LOW
+                    </span>
+                </td>
+                <td>Continue monitoring conditions</td>
+            </tr>
+            
+            <tr>
+                <td>4</td>
+                <td>9</td>
+                <td class="probability">
+                    20.8%
+                </td>
+                <td>0.0957</td>
+                <td>
+                    <span class="priority priority-low">
+                        LOW
+                    </span>
+                </td>
+                <td>Continue monitoring conditions</td>
+            </tr>
+            
+            </tbody>
+        </table>
+
+        
+        <div class="info">
+            Zones are ordered by operational priority, then probability and risk score. Probability-weighted risk is a planning metric, not an exact survivor-location probability.
+        </div>
+        
+    </section>
+    
+
+    
+    <section class="card">
+        <h2>3. Rescue Facility</h2>
+        
+        <div class="rescue-grid">
+
+            <div class="metric">
+                <div class="label">FACILITY</div>
+                <div class="value">Mumbai Coastal Rescue Station</div>
+            </div>
+
+            <div class="metric">
+                <div class="label">TYPE</div>
+                <div class="value">Coast Guard / Rescue</div>
+            </div>
+
+            <div class="metric">
+                <div class="label">LATITUDE</div>
+                <div class="value">
+                    19.076000
+                </div>
+            </div>
+
+            <div class="metric">
+                <div class="label">LONGITUDE</div>
+                <div class="value">
+                    72.877700
+                </div>
+            </div>
+
+            <div class="metric">
+                <div class="label">DISTANCE</div>
+                <div class="value">
+                    0.887 km
+                </div>
+            </div>
+
+            <div class="metric">
+                <div class="label">BEARING</div>
+                <div class="value">
+                    239.9°
+                </div>
+            </div>
+
+        </div>
+        
+    </section>
+    
+
+    
+    <section class="card">
+        <h2>4. Rescue Route</h2>
+
+        <div class="route-summary">
+
+            <div class="metric">
+                <div class="label">GEOMETRY TYPE</div>
+                <div class="value">LineString</div>
+            </div>
+
+            <div class="metric">
+                <div class="label">DISTANCE</div>
+                <div class="value">
+                    0.887 km
+                </div>
+            </div>
+
+            <div class="metric">
+                <div class="label">BEARING</div>
+                <div class="value">
+                    239.9°
+                </div>
+            </div>
+
+        </div>
+
+        <div class="route-coordinates">
+            <strong>Route coordinates:</strong><br>
+            19.080000, 72.885000 → 19.076000, 72.877700
+        </div>
+    </section>
+    
+
+    
+    <section class="card">
+        <h2>5. Rescue Route Hazard Check</h2>
+
+        <div class="info">
+            <strong>not_requested</strong>
+        </div>
+
+        <div class="hazard-message">
+            Provide restricted_geometry to run the rescue-route hazard check.
+        </div>
+    </section>
+    
+
+    
+    <section class="card">
+        <h2>6. SAR Evidence</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Type</th>
+                    <th>Description</th>
+                    <th>Source</th>
+                    <th>Source Timestamp</th>
+                    <th>Confidence</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                
+            <tr>
+                <td>weather_observation</td>
+                <td>Strong wind conditions reported near the last known position.</td>
+                <td>Open-Meteo</td>
+                <td>
+                    2026-09-17T07:30:00Z
+                </td>
+                <td>
+                    0.85
+                </td>
+            </tr>
+            
+            <tr>
+                <td>Last Known Position</td>
+                <td>Last known GPS position received from the vessel</td>
+                <td>GPS</td>
+                <td>
+                    N/A
+                </td>
+                <td>
+                    N/A
+                </td>
+            </tr>
+            
+            <tr>
+                <td>weather</td>
+                <td>Strong wind and current conditions detected near last known SAR position</td>
+                <td>ORCA test data</td>
+                <td>
+                    N/A
+                </td>
+                <td>
+                    N/A
+                </td>
+            </tr>
+            
+            </tbody>
+        </table>
+    </section>
+    
+
+    <section class="card">
+
+        <h2>7. Operational Warning</h2>
+
+        <div class="warning">
+            SAR search zones are planning estimates based on available data and are not exact survivor locations.
+        </div>
+
+    </section>
+
+    <div class="footer">
+
+        ORCA SAR Mission Brief<br>
+
+        Generated: 2026-09-17 17:26:20<br>
+
+        Operational planning artifact — verify field conditions before deployment.
+
+    </div>
+
+</div>
+
+</body>
+</html>

@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+    
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap-glyphicons.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.2.0/css/all.min.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/python-visualization/folium/folium/templates/leaflet.awesome.rotate.min.css"/>
+    
+            <meta name="viewport" content="width=device-width,
+                initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+            <style>
+                #map_1614ac67f808eba2326c38bc4661e236 {
+                    position: relative;
+                    width: 100.0%;
+                    height: 100.0%;
+                    left: 0.0%;
+                    top: 0.0%;
+                }
+                .leaflet-container { font-size: 1rem; }
+            </style>
+
+            <style>html, body {
+                width: 100%;
+                height: 100%;
+                margin: 0;
+                padding: 0;
+            }
+            </style>
+
+            <style>#map {
+                position:absolute;
+                top:0;
+                bottom:0;
+                right:0;
+                left:0;
+                }
+            </style>
+
+            <script>
+                L_NO_TOUCH = false;
+                L_DISABLE_3D = false;
+            </script>
+
+        
+</head>
+<body>
+    
+    
+            <div class="folium-map" id="map_1614ac67f808eba2326c38bc4661e236" ></div>
+        
+</body>
+<script>
+    
+    
+            var map_1614ac67f808eba2326c38bc4661e236 = L.map(
+                "map_1614ac67f808eba2326c38bc4661e236",
+                {
+                    center: [9.9312, 76.2673],
+                    crs: L.CRS.EPSG3857,
+                    ...{
+  "zoom": 8,
+  "zoomControl": true,
+  "preferCanvas": false,
+}
+
+                }
+            );
+
+            
+
+        
+    
+            var tile_layer_bf16cb6542612bf4924130e207a08b8a = L.tileLayer(
+                "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+                {
+  "minZoom": 0,
+  "maxZoom": 19,
+  "maxNativeZoom": 19,
+  "noWrap": false,
+  "attribution": "\u0026copy; \u003ca href=\"https://www.openstreetmap.org/copyright\"\u003eOpenStreetMap\u003c/a\u003e contributors",
+  "subdomains": "abc",
+  "detectRetina": false,
+  "tms": false,
+  "opacity": 1,
+}
+
+            );
+        
+    
+            tile_layer_bf16cb6542612bf4924130e207a08b8a.addTo(map_1614ac67f808eba2326c38bc4661e236);
+        
+    
+            var marker_f439d25af336fc619de1a7e51d75e04d = L.marker(
+                [9.9312, 76.2673],
+                {
+}
+            ).addTo(map_1614ac67f808eba2326c38bc4661e236);
+        
+    
+        var popup_e298a1643f0c0bb68658c01997611f9f = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_f7cae81aebd9f5bf2abdd6f93f747f89 = $(`<div id="html_f7cae81aebd9f5bf2abdd6f93f747f89" style="width: 100.0%; height: 100.0%;">Kochi</div>`)[0];
+                popup_e298a1643f0c0bb68658c01997611f9f.setContent(html_f7cae81aebd9f5bf2abdd6f93f747f89);
+            
+        
+
+        marker_f439d25af336fc619de1a7e51d75e04d.bindPopup(popup_e298a1643f0c0bb68658c01997611f9f)
+        ;
+
+        
+    
+    
+            marker_f439d25af336fc619de1a7e51d75e04d.bindTooltip(
+                `<div>
+                     Query location
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+</script>
+</html>
